@@ -1,7 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require('cors');
-// const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 // const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
@@ -35,6 +35,15 @@ async function run() {
 
 
 
+    // save survey data 
+    app.post('/survey', async (req, res) => {
+      const data = req.body;
+      const result = await surveyCollection.insertOne(data);
+      res.send(result);
+
+    })
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -48,9 +57,9 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-res.send('Welcome...');
+  res.send('Welcome...');
 })
 
 app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 })
