@@ -34,6 +34,45 @@ async function run() {
     const surveyCollection = client.db("surveyDb").collection("surveys");
 
 
+    // jwt related api methods    
+    app.post('/jwt', async (req, res) => {
+      try {
+        const user = req.body;
+        if (!user || !user.email) {
+          return res.status(400).send({ error: 'Invalid user data' });
+        }
+
+        const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+          expiresIn: '2h'
+        });
+
+        res.send({ token });
+      } catch (error) {
+        console.error('Error generating token:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+
+
+    // middleware 
+    const verifyToken = (req, res, next) => {
+        console.log('inside verifyToken', req.headers.authorization);
+        if (!req.headers.authorization) {
+            return res.status(401).send({ error: 'No token provided' });
+        }
+        const token = req.headers.authorization.split(' ')[1];
+        // if(!token){
+        //     return res.status(401).send({ error: 'No token provided' });
+        // }
+
+        jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+            if (err) {
+                return res.status(403).send({ error: 'Invalid token' });
+            }
+            req.decoded = decoded;
+            next();
+        })
+    }
 
     // save survey data 
     app.post('/survey', async (req, res) => {
