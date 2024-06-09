@@ -13,7 +13,6 @@ app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.9ola8x0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -24,23 +23,20 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server (optional starting in v4.7)
     await client.connect();
-
     const surveyCollection = client.db("surveyDb").collection("surveys");
 
     // JWT related API methods
     app.post('/jwt', async (req, res) => {
-      try {
-        const user = req.body;
-        if (!user || !user.email) {
-          return res.status(400).send({ error: 'Invalid user data' });
-        }
+      const user = req.body;
+      if (!user || !user.email) {
+        return res.status(400).send({ error: 'Invalid user data' });
+      }
 
+      try {
         const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
           expiresIn: '2h',
         });
-
         res.send({ token });
       } catch (error) {
         console.error('Error generating token:', error);
@@ -48,13 +44,13 @@ async function run() {
       }
     });
 
-    // Middleware
+    // Middleware to verify JWT token
     const verifyToken = (req, res, next) => {
-      console.log('inside verifyToken', req.headers.authorization);
-      if (!req.headers.authorization) {
+      const authorizationHeader = req.headers.authorization;
+      if (!authorizationHeader) {
         return res.status(401).send({ error: 'No token provided' });
       }
-      const token = req.headers.authorization.split(' ')[1];
+      const token = authorizationHeader.split(' ')[1];
 
       jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
         if (err) {
@@ -76,6 +72,86 @@ async function run() {
       }
     });
 
+    // Get all surveys data with pagination, sort, filter,reset, refresh and search 
+    // app.get('/all-surveys', async (req, res) => {
+    //   const size = parseInt(req.query.size);
+    //   const page = parseInt(req.query.page) - 1;
+    //   const filter = req.query.filter;
+    //   const sort = req.query.sort;
+    //   const search = req.query.search;
+
+    //   let query = search ? { title: { $regex: search, $options: 'i' } } : {};
+    //   if (filter) query.category = filter;
+
+    //   let options = {};
+    //   if (sort) options.sort = { deadline: sort === 'asc' ? 1 : -1 };
+
+    //   try {
+    //     const result = await surveyCollection
+    //       .find(query, options)
+    //       .skip(page * size)
+    //       .limit(size)
+    //       .toArray();
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error('Error fetching surveys:', error);
+    //     res.status(500).send({ error: 'Internal Server Error' });
+    //   }
+    // });
+
+    app.get('/all-surveys', async (req, res) => {
+      const size = parseInt(req.query.size) || 10;
+      const page = parseInt(req.query.page) || 1; // Page 1-based indexing
+      const filter = req.query.filter;
+      const sort = req.query.sort;
+      const search = req.query.search;
+    
+      // Build the query object
+      let query = search ? { title: { $regex: search, $options: 'i' } } : {};
+      if (filter) query.category = filter;
+    
+      // Build the sort options
+      let sortOptions = {};
+      if (sort) sortOptions.deadline = sort === 'asc' ? 1 : -1;
+    
+      try {
+        // Fetch surveys and total count
+        const [surveys, totalCount] = await Promise.all([
+          surveyCollection.find(query).sort(sortOptions).skip((page - 1) * size).limit(size).toArray(),
+          surveyCollection.countDocuments(query)
+        ]);
+    
+        res.send({ surveys, totalCount });
+      } catch (error) {
+        console.error('Error fetching surveys:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+    
+
+    // Get all surveys data count from db
+    app.get('/surveys-count', async (req, res) => {
+      const filter = req.query.filter;
+      const search = req.query.search;
+      
+      // Build the query object
+      let query = search ? { title: { $regex: search, $options: 'i' } } : {};
+      if (filter) query.category = filter;
+    
+      try {
+        const count = await surveyCollection.countDocuments(query);
+        res.send({ count });
+      } catch (error) {
+        console.error('Error fetching survey count:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+    
+
+
+
+
+
     // Save survey data
     app.post('/surveys', async (req, res) => {
       try {
@@ -88,17 +164,14 @@ async function run() {
       }
     });
 
-    // Send a ping to confirm a successful connection
+    // Confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } catch (error) {
     console.error('Error during MongoDB connection or operation:', error);
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // Uncomment this line if you want to close the connection after the run function
-    // await client.close();
   }
 }
+
 run().catch(console.dir);
 
 app.get('/', (req, res) => {
