@@ -163,7 +163,20 @@ async function run() {
       }
     });
 
-    // for admin
+    // for admin all functionality
+    app.get('/users/admin/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query)
+      let admin = false;
+      if (user) {
+          admin = user?.role === "admin"
+      }
+      res.send({ admin })
+  });
+
+
+
     app.put('/users', async (req, res) => {
       const user = req.body;
 
