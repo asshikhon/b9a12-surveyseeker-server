@@ -78,7 +78,7 @@ async function run() {
     app.get('/survey/:id', async (req, res) => {
       try {
         const id = req.params.id;
-        const query = {_id: new ObjectId(id)}
+        const query = { _id: new ObjectId(id) }
         const result = await surveyCollection.findOne(query);
         res.send(result);
       } catch (error) {
@@ -87,7 +87,7 @@ async function run() {
       }
     });
 
-    
+
     // Get all surveys data with pagination, sort, filter,reset, refresh and search 
     // app.get('/all-surveys', async (req, res) => {
     //   const size = parseInt(req.query.size);
@@ -121,39 +121,39 @@ async function run() {
       const filter = req.query.filter;
       const sort = req.query.sort;
       const search = req.query.search;
-    
+
       // Build the query object
       let query = search ? { title: { $regex: search, $options: 'i' } } : {};
       if (filter) query.category = filter;
-    
+
       // Build the sort options
       let sortOptions = {};
       if (sort) sortOptions.deadline = sort === 'asc' ? 1 : -1;
-    
+
       try {
         // Fetch surveys and total count
         const [surveys, totalCount] = await Promise.all([
           surveyCollection.find(query).sort(sortOptions).skip((page - 1) * size).limit(size).toArray(),
           surveyCollection.countDocuments(query)
         ]);
-    
+
         res.send({ surveys, totalCount });
       } catch (error) {
         console.error('Error fetching surveys:', error);
         res.status(500).send({ error: 'Internal Server Error' });
       }
     });
-    
+
 
     // Get all surveys data count from db
     app.get('/surveys-count', async (req, res) => {
       const filter = req.query.filter;
       const search = req.query.search;
-      
+
       // Build the query object
       let query = search ? { title: { $regex: search, $options: 'i' } } : {};
       if (filter) query.category = filter;
-    
+
       try {
         const count = await surveyCollection.countDocuments(query);
         res.send({ count });
@@ -163,6 +163,22 @@ async function run() {
       }
     });
 
+    // for surveyor all functionality
+    app.get('/users/surveyor/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        res.status(403).send({ message: 'forbidden access access' })
+      }
+      const query = { email: email }
+      const user = await usersCollection.findOne(query)
+      let surveyor = false;
+      if (user) {
+        surveyor = user?.role === "surveyor"
+      }
+      res.send({ surveyor })
+    });
+
+
     // for admin all functionality
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
@@ -170,10 +186,10 @@ async function run() {
       const user = await usersCollection.findOne(query)
       let admin = false;
       if (user) {
-          admin = user?.role === "admin"
+        admin = user?.role === "admin"
       }
       res.send({ admin })
-  });
+    });
 
 
 
@@ -184,45 +200,45 @@ async function run() {
       const query = { email: user.email };
       const existingUser = await usersCollection.findOne(query);
       if (existingUser) {
-          return res.send({ message: "user already exist", insertedId: null })
+        return res.send({ message: "user already exist", insertedId: null })
       }
       const updatedDoc = {
-          $set: {
-              ...user
-          }
+        $set: {
+          ...user
+        }
       }
       const result = await usersCollection.updateOne(query, updatedDoc, options);
       res.send(result);
-  });
+    });
 
 
-  app.get('/users', async (req, res) => {
+    app.get('/users', async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
-  });
-    
+    });
 
-// delete and patch
 
-app.patch('/users/role/:id', async (req, res) => {
-  const id = req.params.id;
-  const { role } = req.body; // Extract role from request body
-  const filter = { _id: new ObjectId(id) };
-  const updatedDoc = {
-      $set: {
+    // delete and patch
+
+    app.patch('/users/role/:id', async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body; // Extract role from request body
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
           role: role
-      }
-  };
-  const result = await usersCollection.updateOne(filter, updatedDoc);
-  res.send(result);
-});
+        }
+      };
+      const result = await usersCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
 
-app.delete('/users/:id', async (req, res) => {
-  const id = req.params.id;
-  const query = { _id: new ObjectId(id) }
-  const result = await usersCollection.deleteOne(query);
-  res.send(result);
-});
+    app.delete('/users/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
 
 
 
