@@ -237,6 +237,18 @@ async function run() {
           next();
       }
 
+        // use verify surveyor after verify token
+        const verifyProUSer = async (req, res, next) => {
+          const email = req.decoded.email;
+          const query = { email: email }
+          const user = await usersCollection.findOne(query);
+          const isProUSer = user?.role === 'pro-user';
+          if (!isProUSer) {
+              return res.status(403).send({ error: 'Invalid token' });
+          }
+          next();
+      }
+
 
 
     app.put('/users', async (req, res) => {
