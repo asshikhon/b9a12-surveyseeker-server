@@ -25,6 +25,7 @@ async function run() {
   try {
     await client.connect();
     const surveyCollection = client.db("surveyDb").collection("surveys");
+    const usersCollection = client.db("surveyDb").collection("users");
 
     // JWT related API methods
     app.post('/jwt', async (req, res) => {
@@ -72,6 +73,21 @@ async function run() {
       }
     });
 
+
+    // get single survey data from db using _id
+    app.get('/survey/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await surveyCollection.findOne(query);
+        res.send(result);
+      } catch (error) {
+        console.error('Error fetching surveys:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+
+    
     // Get all surveys data with pagination, sort, filter,reset, refresh and search 
     // app.get('/all-surveys', async (req, res) => {
     //   const size = parseInt(req.query.size);
@@ -146,9 +162,54 @@ async function run() {
         res.status(500).send({ error: 'Internal Server Error' });
       }
     });
+
+    // for admin
+    app.put('/users', async (req, res) => {
+      const user = req.body;
+
+      const options = { upsert: true };
+      const query = { email: user.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+          return res.send({ message: "user already exist", insertedId: null })
+      }
+      const updatedDoc = {
+          $set: {
+              ...user
+          }
+      }
+      const result = await usersCollection.updateOne(query, updatedDoc, options);
+      res.send(result);
+  });
+
+
+  app.get('/users', async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+  });
     
 
+// delete and patch
 
+app.patch('/users/role/:id', async (req, res) => {
+  const id = req.params.id;
+  const { role } = req.body; // Extract role from request body
+  const filter = { _id: new ObjectId(id) };
+  const updatedDoc = {
+      $set: {
+          role: role
+      }
+  };
+  const result = await usersCollection.updateOne(filter, updatedDoc);
+  res.send(result);
+});
+
+app.delete('/users/:id', async (req, res) => {
+  const id = req.params.id;
+  const query = { _id: new ObjectId(id) }
+  const result = await usersCollection.deleteOne(query);
+  res.send(result);
+});
 
 
 
