@@ -179,9 +179,31 @@ async function run() {
     });
 
 
+    // proUser 
+
+    app.get('/users/prouser/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        res.status(403).send({ message: 'forbidden access access' })
+      }
+      const query = { email: email }
+      const user = await usersCollection.findOne(query)
+      let proUser = false;
+      if (user) {
+        proUser = user?.role === "pro-user"
+      }
+      res.send({ proUser })
+    });
+
+
     // for admin all functionality
     app.get('/users/admin/:email', verifyToken, async (req, res) => {
       const email = req.params.email;
+
+      if (email !== req.decoded.email) {
+        res.status(403).send({ message: 'forbidden access access' })
+      }
+
       const query = { email: email }
       const user = await usersCollection.findOne(query)
       let admin = false;
