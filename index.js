@@ -78,13 +78,17 @@ async function run() {
     // Get all surveys data methods
     app.get('/surveys', async (req, res) => {
       let sortQuery = { voteCount: 1 };
+      let sortQuery1 = { timestamp: 1 };
       const { sort } = req.query;
       if (sort === 'voteCount_DESC') {
         sortQuery = { voteCount: -1 };
       }
+      if (sort === 'timestamp_DESC') {
+        sortQuery = { timestamp: -1 };
+      }
 
       try {
-        const result = await surveyCollection.find({}).sort(sortQuery).limit(8).toArray();
+        const result = await surveyCollection.find({}).sort(sortQuery, sortQuery1).limit(8).toArray();
         res.send(result);
       } catch (error) {
         console.error("Error fetching top foods:", error);
