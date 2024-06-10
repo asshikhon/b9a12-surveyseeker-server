@@ -26,6 +26,8 @@ async function run() {
     await client.connect();
     const surveyCollection = client.db("surveyDb").collection("surveys");
     const usersCollection = client.db("surveyDb").collection("users");
+    const reportsCollection = client.db("surveyDb").collection("reports");
+    const votesCollection = client.db("surveyDb").collection("votes");
 
     // JWT related API methods
     app.post('/jwt', async (req, res) => {
@@ -311,6 +313,32 @@ async function run() {
         res.status(500).send({ error: 'Internal Server Error' });
       }
     });
+
+
+    // Save user or proUser reports data
+    app.post('/reports', async (req, res) => {
+      try {
+        const data = req.body;
+        const result = await reportsCollection.insertOne(data);
+        res.send(result);
+      } catch (error) {
+        console.error('Error saving survey:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+      }
+    });
+
+// for vote methods
+
+app.get('/vote/:id', verifyToken, async (req, res) => {
+  if (req.user.email) {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await votesCollection.findOne(query);
+      res.send(result);
+  }
+})
+
+
 
     // Confirm a successful connection
     await client.db("admin").command({ ping: 1 });
