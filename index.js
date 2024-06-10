@@ -130,7 +130,7 @@ async function run() {
 
       // Build the sort options
       let sortOptions = {};
-      if (sort) sortOptions.deadline = sort === 'asc' ? 1 : -1;
+      if (sort) sortOptions.voteCount = sort === 'asc' ? 1 : -1;
 
       try {
         // Fetch surveys and total count
@@ -196,6 +196,22 @@ async function run() {
       }
       res.send({ proUser })
     });
+    
+    // proUser 
+
+    app.get('/users/user/:email', verifyToken, async (req, res) => {
+      const email = req.params.email;
+      if (email !== req.decoded.email) {
+        res.status(403).send({ message: 'forbidden access access' })
+      }
+      const query = { email: email }
+      const user = await usersCollection.findOne(query)
+      let User = false;
+      if (user) {
+        User = user?.role === "user"
+      }
+      res.send({ User })
+    });
 
 
     // for admin all functionality
@@ -246,6 +262,18 @@ async function run() {
           const user = await usersCollection.findOne(query);
           const isProUSer = user?.role === 'pro-user';
           if (!isProUSer) {
+              return res.status(403).send({ error: 'Invalid token' });
+          }
+          next();
+      }
+
+        // use verify user after verify token
+        const verifyUSer = async (req, res, next) => {
+          const email = req.decoded.email;
+          const query = { email: email }
+          const user = await usersCollection.findOne(query);
+          const isUser = user?.role === 'user';
+          if (!isUser) {
               return res.status(403).send({ error: 'Invalid token' });
           }
           next();
@@ -328,7 +356,12 @@ async function run() {
     });
 
 // for vote methods
+app.get('/votes', async (req, res) => {
+  const result = await votesCollection.find().toArray();
+  res.send(result);
+});
 
+// for single vote data
 app.get('/vote/:id', verifyToken, async (req, res) => {
   if (req.user.email) {
       const id = req.params.id;
@@ -336,7 +369,21 @@ app.get('/vote/:id', verifyToken, async (req, res) => {
       const result = await votesCollection.findOne(query);
       res.send(result);
   }
-})
+});
+
+        // for vote survey
+        app.post('/votes', async (req, res) => {
+          const voteSurvey = req.body;
+          const voteId = voteSurvey.voteId;
+          const result = await votesCollection.insertOne(voteSurvey);
+          const updateDoc = {
+              $inc: { voteCount: 1 },
+          }
+          const voteQuery = { _id: new ObjectId(voteId) }
+          const updateVoteCount = await surveyCollection.updateOne(voteQuery, updateDoc)
+
+          res.send(result);
+      });
 
 
 
