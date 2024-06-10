@@ -65,13 +65,30 @@ async function run() {
     };
 
     // Get all surveys data methods
+    // app.get('/surveys', async (req, res) => {
+    //   try {
+    //     const result = await surveyCollection.find().toArray();
+    //     res.send(result);
+    //   } catch (error) {
+    //     console.error('Error fetching surveys:', error);
+    //     res.status(500).send({ error: 'Internal Server Error' });
+    //   }
+    // });
+
+    // Get all surveys data methods
     app.get('/surveys', async (req, res) => {
+      let sortQuery = { voteCount: 1 };
+      const { sort } = req.query;
+      if (sort === 'voteCount_DESC') {
+        sortQuery = { voteCount: -1 };
+      }
+
       try {
-        const result = await surveyCollection.find().toArray();
+        const result = await surveyCollection.find({}).sort(sortQuery).limit(8).toArray();
         res.send(result);
       } catch (error) {
-        console.error('Error fetching surveys:', error);
-        res.status(500).send({ error: 'Internal Server Error' });
+        console.error("Error fetching top foods:", error);
+        res.status(500).json({ error: "Internal Server Error" });
       }
     });
 
@@ -196,7 +213,7 @@ async function run() {
       }
       res.send({ proUser })
     });
-    
+
     // proUser 
 
     app.get('/users/user/:email', verifyToken, async (req, res) => {
@@ -231,53 +248,53 @@ async function run() {
       res.send({ admin })
     });
 
-        // use verify admin after verify token
-        const verifyAdmin = async (req, res, next) => {
-          const email = req.decoded.email;
-          const query = { email: email }
-          const user = await usersCollection.findOne(query);
-          const isAdmin = user?.role === 'admin';
-          if (!isAdmin) {
-              return res.status(403).send({ error: 'Invalid token' });
-          }
-          next();
+    // use verify admin after verify token
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const isAdmin = user?.role === 'admin';
+      if (!isAdmin) {
+        return res.status(403).send({ error: 'Invalid token' });
       }
+      next();
+    }
 
-        // use verify surveyor after verify token
-        const verifySurveyor = async (req, res, next) => {
-          const email = req.decoded.email;
-          const query = { email: email }
-          const user = await usersCollection.findOne(query);
-          const isSurveyor = user?.role === 'surveyor';
-          if (!isSurveyor) {
-              return res.status(403).send({ error: 'Invalid token' });
-          }
-          next();
+    // use verify surveyor after verify token
+    const verifySurveyor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const isSurveyor = user?.role === 'surveyor';
+      if (!isSurveyor) {
+        return res.status(403).send({ error: 'Invalid token' });
       }
+      next();
+    }
 
-        // use verify surveyor after verify token
-        const verifyProUSer = async (req, res, next) => {
-          const email = req.decoded.email;
-          const query = { email: email }
-          const user = await usersCollection.findOne(query);
-          const isProUSer = user?.role === 'pro-user';
-          if (!isProUSer) {
-              return res.status(403).send({ error: 'Invalid token' });
-          }
-          next();
+    // use verify surveyor after verify token
+    const verifyProUSer = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const isProUSer = user?.role === 'pro-user';
+      if (!isProUSer) {
+        return res.status(403).send({ error: 'Invalid token' });
       }
+      next();
+    }
 
-        // use verify user after verify token
-        const verifyUSer = async (req, res, next) => {
-          const email = req.decoded.email;
-          const query = { email: email }
-          const user = await usersCollection.findOne(query);
-          const isUser = user?.role === 'user';
-          if (!isUser) {
-              return res.status(403).send({ error: 'Invalid token' });
-          }
-          next();
+    // use verify user after verify token
+    const verifyUSer = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email }
+      const user = await usersCollection.findOne(query);
+      const isUser = user?.role === 'user';
+      if (!isUser) {
+        return res.status(403).send({ error: 'Invalid token' });
       }
+      next();
+    }
 
 
 
@@ -355,35 +372,35 @@ async function run() {
       }
     });
 
-// for vote methods
-app.get('/votes', async (req, res) => {
-  const result = await votesCollection.find().toArray();
-  res.send(result);
-});
-
-// for single vote data
-app.get('/vote/:id', verifyToken, async (req, res) => {
-  if (req.user.email) {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await votesCollection.findOne(query);
+    // for vote methods
+    app.get('/votes', async (req, res) => {
+      const result = await votesCollection.find().toArray();
       res.send(result);
-  }
-});
+    });
 
-        // for vote survey
-        app.post('/votes', async (req, res) => {
-          const voteSurvey = req.body;
-          const voteId = voteSurvey.voteId;
-          const result = await votesCollection.insertOne(voteSurvey);
-          const updateDoc = {
-              $inc: { voteCount: 1 },
-          }
-          const voteQuery = { _id: new ObjectId(voteId) }
-          const updateVoteCount = await surveyCollection.updateOne(voteQuery, updateDoc)
+    // for single vote data
+    app.get('/vote/:id', verifyToken, async (req, res) => {
+      if (req.user.email) {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await votesCollection.findOne(query);
+        res.send(result);
+      }
+    });
 
-          res.send(result);
-      });
+    // for vote survey
+    app.post('/votes', async (req, res) => {
+      const voteSurvey = req.body;
+      const voteId = voteSurvey.voteId;
+      const result = await votesCollection.insertOne(voteSurvey);
+      const updateDoc = {
+        $inc: { voteCount: 1 },
+      }
+      const voteQuery = { _id: new ObjectId(voteId) }
+      const updateVoteCount = await surveyCollection.updateOne(voteQuery, updateDoc)
+
+      res.send(result);
+    });
 
 
 
