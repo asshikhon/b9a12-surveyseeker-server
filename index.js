@@ -478,6 +478,13 @@ async function run() {
       res.send(result);
   });
 
+    // email method on data get
+    app.get('/votes/:email', async (req, res) => {
+      const surveyorEmail = req.params.email
+      const result = await votesCollection.find({ 'surveyor.email': surveyorEmail }).toArray();
+      res.send(result);
+  });
+
     // for single vote data
     app.get('/vote/:id', verifyToken, async (req, res) => {
       if (req.user.email) {
