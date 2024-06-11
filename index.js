@@ -96,6 +96,13 @@ async function run() {
       }
     });
 
+    // email method on data get
+    app.get('/surveys/:email', async (req, res) => {
+      const userEmail = req.params.email
+      const result = await surveyCollection.find({ 'surveyor.email': userEmail }).toArray();
+      res.send(result);
+  });
+
 
     // get single survey data from db using _id
     app.get('/survey/:id', async (req, res) => {
@@ -375,6 +382,33 @@ async function run() {
         res.status(500).send({ error: 'Internal Server Error' });
       }
     });
+
+    // for vote methods
+    app.get('/reports', async (req, res) => {
+      const result = await reportsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // email method on data get
+    app.get('/reported/:email', async (req, res) => {
+      const userEmails = req.params.email
+      const result = await reportsCollection.find({ userEmail: userEmails }).toArray();
+      res.send(result);
+  });
+
+    // for single vote data
+    app.get('/report/:id', verifyToken, async (req, res) => {
+      if (req.user.email) {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await reportsCollection.findOne(query);
+        res.send(result);
+      }
+    });
+
+
+
+
 
     // for vote methods
     app.get('/votes', async (req, res) => {
