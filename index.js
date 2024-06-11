@@ -143,7 +143,7 @@ async function run() {
       }
 
       try {
-        const result = await surveyCollection.find({}).sort(sortQuery, sortQuery1).limit(8).toArray();
+        const result = await surveyCollection.find({}).sort(sortQuery, sortQuery1).limit(6).toArray();
         res.send(result);
       } catch (error) {
         console.error("Error fetching top foods:", error);
@@ -502,6 +502,15 @@ async function run() {
       res.send(result);
     });
 
+
+    // delete method
+    app.delete('/survey/:id',  async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await surveyCollection.deleteOne(query);
+      res.send(result);
+
+  })
 
 
     // Confirm a successful connection
