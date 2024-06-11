@@ -382,6 +382,13 @@ async function run() {
       res.send(result);
     });
 
+    // email method on data get
+    app.get('/comments/:email', async (req, res) => {
+      const userEmail = req.params.email
+      const result = await votesCollection.find({ 'voter.voter_email': userEmail }).toArray();
+      res.send(result);
+  });
+
     // for single vote data
     app.get('/vote/:id', verifyToken, async (req, res) => {
       if (req.user.email) {
