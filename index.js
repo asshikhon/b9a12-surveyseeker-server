@@ -512,6 +512,20 @@ async function run() {
 
   })
 
+  app.put('/surveys/:id', async (req, res) => {
+    const id = req.params.id;
+    const survey = req.body;
+    const filter = { _id: new ObjectId(id) }
+    const options = { upsert: true }
+    const updateSurvey = {
+        $set: {
+            ...survey
+        }
+    }
+    const result = await surveyCollection.updateOne(filter, updateSurvey, options);
+    res.send(result);
+})
+
 
     // Confirm a successful connection
     await client.db("admin").command({ ping: 1 });
