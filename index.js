@@ -4,7 +4,7 @@ const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
-// const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const port = process.env.PORT || 5000;
 
 // Middleware
@@ -28,6 +28,7 @@ async function run() {
     const usersCollection = client.db("surveyDb").collection("users");
     const reportsCollection = client.db("surveyDb").collection("reports");
     const votesCollection = client.db("surveyDb").collection("votes");
+    const paymentCollection = client.db("surveyDb").collection("payment");
 
     // JWT related API methods
     app.post('/jwt', async (req, res) => {
@@ -46,6 +47,54 @@ async function run() {
         res.status(500).send({ error: 'Internal Server Error' });
       }
     });
+
+    // for payments
+    app.post('/create-payment-intent', async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      // console.log(amount)
+
+      const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ['card']
+      })
+      res.send({
+          clientSecret: paymentIntent.client_secret,
+      });
+  })
+
+  app.get('/payments/:email', async (req, res) => {
+      const query = { email: req.params.email };
+      if (req.params.email !== req.decoded.email) {
+          return res.status(403).send({ message: "forbidden access" })
+      }
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result)
+  })
+
+
+  app.post('/payments', async (req, res) => {
+      const payment = req.body;
+
+      try {
+          const paymentResult = await paymentCollection.insertOne(payment);
+          console.log("Payment Info", payment);
+          const userUpdateResult = await usersCollection.updateOne(
+              { email: payment?.email },
+              {
+                  $set: { role: 'pro-user' }
+              }
+          );
+
+          res.send({ paymentResult, userUpdateResult });
+      } catch (error) {
+          console.error('Error processing payment:', error);
+          res.status(500).send({ message: 'Internal server error' });
+      }
+  });
+
+
 
     // Middleware to verify JWT token
     const verifyToken = (req, res, next) => {
