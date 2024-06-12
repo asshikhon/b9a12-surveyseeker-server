@@ -55,50 +55,50 @@ async function run() {
       // console.log(amount)
 
       const paymentIntent = await stripe.paymentIntents.create({
-          amount: amount,
-          currency: "usd",
-          payment_method_types: ['card']
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ['card']
       })
       res.send({
-          clientSecret: paymentIntent.client_secret,
+        clientSecret: paymentIntent.client_secret,
       });
-  })
+    })
 
-  app.get('/payments', async(req, res) => {
-  const result = await paymentCollection.find().toArray();
-  res.send(result)
-  
-  })
+    app.get('/payments', async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result)
 
-  app.get('/payments/:email', async (req, res) => {
+    })
+
+    app.get('/payments/:email', async (req, res) => {
       const query = { email: req.params.email };
       if (req.params.email !== req.decoded.email) {
-          return res.status(403).send({ message: "forbidden access" })
+        return res.status(403).send({ message: "forbidden access" })
       }
       const result = await paymentCollection.find(query).toArray();
       res.send(result)
-  })
+    })
 
 
-  app.post('/payments', async (req, res) => {
+    app.post('/payments', async (req, res) => {
       const payment = req.body;
 
       try {
-          const paymentResult = await paymentCollection.insertOne(payment);
-          console.log("Payment Info", payment);
-          const userUpdateResult = await usersCollection.updateOne(
-              { email: payment?.email },
-              {
-                  $set: { role: 'pro-user' }
-              }
-          );
+        const paymentResult = await paymentCollection.insertOne(payment);
+        console.log("Payment Info", payment);
+        const userUpdateResult = await usersCollection.updateOne(
+          { email: payment?.email },
+          {
+            $set: { role: 'pro-user' }
+          }
+        );
 
-          res.send({ paymentResult, userUpdateResult });
+        res.send({ paymentResult, userUpdateResult });
       } catch (error) {
-          console.error('Error processing payment:', error);
-          res.status(500).send({ message: 'Internal server error' });
+        console.error('Error processing payment:', error);
+        res.status(500).send({ message: 'Internal server error' });
       }
-  });
+    });
 
 
 
@@ -156,7 +156,7 @@ async function run() {
       const userEmail = req.params.email
       const result = await surveyCollection.find({ 'surveyor.email': userEmail }).toArray();
       res.send(result);
-  });
+    });
 
 
     // get single survey data from db using _id
@@ -449,7 +449,7 @@ async function run() {
       const userEmails = req.params.email
       const result = await reportsCollection.find({ userEmail: userEmails }).toArray();
       res.send(result);
-  });
+    });
 
     // for single vote data
     app.get('/report/:id', verifyToken, async (req, res) => {
@@ -476,24 +476,36 @@ async function run() {
       const userEmail = req.params.email
       const result = await votesCollection.find({ 'voter.voter_email': userEmail }).toArray();
       res.send(result);
-  });
+    });
 
     // email method on data get
     app.get('/votes/:email', async (req, res) => {
       const surveyorEmail = req.params.email
       const result = await votesCollection.find({ 'surveyor.email': surveyorEmail }).toArray();
       res.send(result);
-  });
+    });
 
     // for single vote data
-    app.get('/vote/:id', verifyToken, async (req, res) => {
-      if (req.user.email) {
+    // app.get('/vote/:id', async (req, res) => {
+    //   if (req.user.email) {
+    //     const id = req.params.id;
+    //     const query = { _id: new ObjectId(id) };
+    //     const result = await votesCollection.findOne(query);
+    //     res.send(result);
+    //   }
+    // });
+    app.get('/vote/:id', async (req, res) => {
+      try {
         const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
+        const query = { _id: new ObjectId(id) }
         const result = await votesCollection.findOne(query);
         res.send(result);
+      } catch (error) {
+        console.error('Error fetching surveys:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
       }
     });
+
 
     // for vote survey
     app.post('/votes', async (req, res) => {
@@ -511,27 +523,50 @@ async function run() {
 
 
     // delete method
-    app.delete('/survey/:id',  async (req, res) => {
+    app.delete('/survey/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await surveyCollection.deleteOne(query);
       res.send(result);
 
-  })
+    })
 
-  app.put('/surveys/:id', async (req, res) => {
-    const id = req.params.id;
-    const survey = req.body;
-    const filter = { _id: new ObjectId(id) }
-    const options = { upsert: true }
-    const updateSurvey = {
+    app.put('/surveys/:id', async (req, res) => {
+      const id = req.params.id;
+      const survey = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true }
+      const updateSurvey = {
         $set: {
-            ...survey
+          ...survey
         }
-    }
-    const result = await surveyCollection.updateOne(filter, updateSurvey, options);
-    res.send(result);
-})
+      }
+      const result = await surveyCollection.updateOne(filter, updateSurvey, options);
+      res.send(result);
+    })
+
+    // status change
+    app.get('/allSurveys', async (req, res) => {
+      const result = await surveyCollection.find().toArray();
+      res.send(result);
+    });
+    // update status 
+    app.put('/surveys/:id/status', async (req, res) => {
+      const { id } = req.params;
+      const { status, feedback } = req.body;
+      try {
+        await surveyCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { status, feedback } }
+        );
+        res.status(200).send({ message: 'Survey status updated successfully' });
+      } catch (error) {
+        console.error('Failed to update survey status', error);
+        res.status(500).send({ error: 'Failed to update survey status' });
+      }
+    });
+
+
 
 
     // Confirm a successful connection
