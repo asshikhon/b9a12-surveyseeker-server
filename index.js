@@ -23,7 +23,7 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
     const surveyCollection = client.db("surveyDb").collection("surveys");
     const usersCollection = client.db("surveyDb").collection("users");
     const reportsCollection = client.db("surveyDb").collection("reports");
@@ -152,12 +152,13 @@ async function run() {
     });
 
     // email method on data get
-    app.get('/surveys/:email', async (req, res) => {
+    app.get('/surveys/:email', verifyToken, async (req, res) => {
       const userEmail = req.params.email
       const result = await surveyCollection.find({ 'surveyor.email': userEmail }).toArray();
       res.send(result);
     });
 
+    
 
     // get single survey data from db using _id
     app.get('/survey/:id', async (req, res) => {
@@ -173,32 +174,7 @@ async function run() {
     });
 
 
-    // Get all surveys data with pagination, sort, filter,reset, refresh and search 
-    // app.get('/all-surveys', async (req, res) => {
-    //   const size = parseInt(req.query.size);
-    //   const page = parseInt(req.query.page) - 1;
-    //   const filter = req.query.filter;
-    //   const sort = req.query.sort;
-    //   const search = req.query.search;
 
-    //   let query = search ? { title: { $regex: search, $options: 'i' } } : {};
-    //   if (filter) query.category = filter;
-
-    //   let options = {};
-    //   if (sort) options.sort = { deadline: sort === 'asc' ? 1 : -1 };
-
-    //   try {
-    //     const result = await surveyCollection
-    //       .find(query, options)
-    //       .skip(page * size)
-    //       .limit(size)
-    //       .toArray();
-    //     res.send(result);
-    //   } catch (error) {
-    //     console.error('Error fetching surveys:', error);
-    //     res.status(500).send({ error: 'Internal Server Error' });
-    //   }
-    // });
 
     app.get('/all-surveys', async (req, res) => {
       const size = parseInt(req.query.size) || 10;
@@ -364,7 +340,7 @@ async function run() {
 
 
 
-    app.put('/users', async (req, res) => {
+    app.put('/users',  async (req, res) => {
       const user = req.body;
 
       const options = { upsert: true };
@@ -391,7 +367,7 @@ async function run() {
 
     // delete and patch
 
-    app.patch('/users/role/:id', async (req, res) => {
+    app.patch('/users/role/:id',verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const { role } = req.body; // Extract role from request body
       const filter = { _id: new ObjectId(id) };
@@ -404,7 +380,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete('/users/:id', async (req, res) => {
+    app.delete('/users/:id', verifyToken, verifySurveyor, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await usersCollection.deleteOne(query);
@@ -445,7 +421,7 @@ async function run() {
     });
 
     // email method on data get
-    app.get('/reported/:email', async (req, res) => {
+    app.get('/reported/:email', verifyToken, async (req, res) => {
       const userEmails = req.params.email
       const result = await reportsCollection.find({ userEmail: userEmails }).toArray();
       res.send(result);
@@ -570,8 +546,8 @@ async function run() {
 
 
     // Confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } catch (error) {
     console.error('Error during MongoDB connection or operation:', error);
   }
